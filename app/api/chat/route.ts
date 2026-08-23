@@ -14,7 +14,11 @@ export async function POST(req: Request) {
       },
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      onError: () => {
+        return "Something went wrong while generating the response.";
+      },
+    });
   } catch (error) {
     console.error("Chat API error:", error);
 

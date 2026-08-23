@@ -65,6 +65,7 @@ function ToolStateCard({
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Company
           </p>
+
           <p className="mt-1 font-medium text-white">
             {lead.company || "Not provided"}
           </p>
@@ -74,6 +75,7 @@ function ToolStateCard({
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Budget
           </p>
+
           <p className="mt-1 font-medium text-white">
             {typeof lead.budget === "number"
               ? `$${lead.budget.toLocaleString()}`
@@ -85,6 +87,7 @@ function ToolStateCard({
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Timeline
           </p>
+
           <p className="mt-1 font-medium text-white">
             {lead.timeline || "Not provided"}
           </p>
@@ -94,6 +97,7 @@ function ToolStateCard({
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Interest
           </p>
+
           <p className="mt-1 font-medium capitalize text-white">
             {lead.interest || "Not provided"}
           </p>
@@ -121,6 +125,7 @@ function LeadScoreCard({ output }: { output: LeadScore }) {
           <p className="text-4xl font-bold text-emerald-400">
             {output.score}
           </p>
+
           <p className="text-xs text-slate-400">out of 100</p>
         </div>
       </div>
@@ -136,6 +141,7 @@ function LeadScoreCard({ output }: { output: LeadScore }) {
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Budget
           </p>
+
           <p className="mt-1 font-semibold text-white">
             ${output.budget.toLocaleString()}
           </p>
@@ -145,6 +151,7 @@ function LeadScoreCard({ output }: { output: LeadScore }) {
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Timeline
           </p>
+
           <p className="mt-1 font-semibold text-white">
             {output.timeline}
           </p>
@@ -154,6 +161,7 @@ function LeadScoreCard({ output }: { output: LeadScore }) {
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Interest
           </p>
+
           <p className="mt-1 font-semibold capitalize text-white">
             {output.interest}
           </p>
@@ -202,44 +210,156 @@ function ToolErrorCard({ error }: { error?: string }) {
   );
 }
 
-export default function Home() {
-  const { messages, sendMessage, status } = useChat();
-  const [input, setInput] = useState("");
+function LoadingSkeleton() {
+  return (
+    <div className="mr-auto w-full max-w-[90%] rounded-2xl bg-slate-800 p-4">
+      <p className="mb-4 text-xs uppercase tracking-wide text-slate-500">
+        AI
+      </p>
 
-  const handleSubmit = (e: React.FormEvent) => {
+      <div className="space-y-3">
+        <div className="h-4 w-3/4 animate-pulse rounded bg-slate-700" />
+        <div className="h-4 w-full animate-pulse rounded bg-slate-700" />
+        <div className="h-4 w-5/6 animate-pulse rounded bg-slate-700" />
+        <div className="h-4 w-2/3 animate-pulse rounded bg-slate-700" />
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const {
+    messages,
+    sendMessage,
+    status,
+    error,
+    regenerate,
+  } = useChat();
+
+  const [input, setInput] = useState("");
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const isLoading =
+    status === "submitted" || status === "streaming";
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!input.trim()) return;
+    const trimmedInput = input.trim();
 
-    sendMessage({ text: input });
+    if (!trimmedInput || isLoading) {
+      return;
+    }
+
+    sendMessage({
+      text: trimmedInput,
+    });
+
     setInput("");
   };
 
+  const handleRetry = async () => {
+    if (isRetrying || isLoading) {
+      return;
+    }
+
+    setIsRetrying(true);
+
+    try {
+      await regenerate();
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-10 text-white">
-      <div className="mx-auto max-w-3xl">
+    <main className="min-h-[100dvh] bg-slate-950 px-4 py-6 text-white sm:py-10">
+      <div className="mx-auto w-full max-w-3xl">
         <div className="mb-8">
           <p className="text-sm font-medium text-blue-400">
-            Week 5 • Assignment 1
+            Week 5 • Assignment 2
           </p>
 
-          <h1 className="mt-2 text-4xl font-bold">
+          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
             LeadScore AI
           </h1>
 
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 text-sm text-slate-400 sm:text-base">
             AI-powered lead scoring with a server-side tool.
           </p>
         </div>
 
+        {/* Chat error */}
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-4"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-300">
+                  !
+                </div>
+
+                <div>
+                  <p className="font-semibold text-red-300">
+                    Couldn&apos;t finish the response
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-400">
+                    The connection was interrupted while processing this
+                    lead. You can retry the failed response.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRetry}
+                disabled={isRetrying || isLoading}
+                className="w-full shrink-0 rounded-lg bg-red-500/20 px-4 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              >
+                {isRetrying ? "Retrying..." : "Retry"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
+          {/* First-run empty state */}
+          {messages.length === 0 && !isLoading && (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-center">
+              <p className="text-lg font-semibold text-white">
+                Ready to score a lead?
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Tell me about a company, its budget, timeline, and level of
+                interest.
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setInput(
+                    "Acme Corp has a $50,000 budget, wants to start next month, and is very interested."
+                  )
+                }
+                className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+              >
+                Try an example
+              </button>
+            </div>
+          )}
+
+          {/* Messages */}
           {messages.map((message) => (
             <div
               key={message.id}
               className={`rounded-2xl p-4 ${
                 message.role === "user"
-                  ? "ml-auto max-w-[85%] bg-blue-600"
-                  : "mr-auto max-w-[90%] bg-slate-800"
+                  ? "ml-auto max-w-[92%] bg-blue-600 sm:max-w-[85%]"
+                  : "mr-auto max-w-[95%] bg-slate-800 sm:max-w-[90%]"
               }`}
             >
               <p className="mb-3 text-xs uppercase tracking-wide text-slate-300">
@@ -252,7 +372,7 @@ export default function Home() {
                     return (
                       <p
                         key={index}
-                        className="whitespace-pre-wrap leading-7"
+                        className="whitespace-pre-wrap break-words leading-7"
                       >
                         {part.text}
                       </p>
@@ -304,27 +424,31 @@ export default function Home() {
               </div>
             </div>
           ))}
+
+          {/* Loading skeleton */}
+          {isLoading && <LoadingSkeleton />}
         </div>
 
+        {/* Chat input */}
         <form
           onSubmit={handleSubmit}
-          className="mt-8 flex gap-3"
+          className="mt-8 flex flex-col gap-3 sm:flex-row"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            disabled={isLoading}
             placeholder="Describe a lead..."
-            className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 outline-none focus:border-blue-500"
+            aria-label="Lead description"
+            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-base outline-none transition placeholder:text-slate-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
           />
 
           <button
             type="submit"
-            disabled={status !== "ready"}
-            className="rounded-xl bg-blue-600 px-6 py-3 font-medium hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isLoading || !input.trim()}
+            className="min-h-12 rounded-xl bg-blue-600 px-6 py-3 font-medium transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0"
           >
-            {status === "submitted" || status === "streaming"
-              ? "Thinking..."
-              : "Send"}
+            {isLoading ? "Thinking..." : "Send"}
           </button>
         </form>
       </div>
